@@ -2,495 +2,469 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HERTZ - Camera Bond Demo</title>
-    <link rel="manifest" href="manifest.json">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>HERTZ - Master Interactive Prototype</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
+        body { background-color: #020202; overflow: hidden; overscroll-behavior: none; }
         .phone-container {
-            width: 375px;
-            height: 760px;
-            box-shadow: 0 25px 60px rgba(0,0,0,0.8);
-            border: 4px solid #161618;
+            width: 375px; height: 812px;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.8); border: 6px solid #161618;
+            background: #000; position: relative; overflow: hidden; border-radius: 50px;
         }
-        .app-screen {
-            display: none;
-            transition: opacity 0.3s ease;
-        }
-        .app-screen.active {
-            display: flex;
-        }
-        .wave-line {
-            transition: d 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
+        ::-webkit-scrollbar { display: none; }
+        * { -ms-overflow-style: none; scrollbar-width: none; -webkit-tap-highlight-color: transparent; }
+        
+        .system-view { transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease; }
+        .app-screen { display: none; animation: modalFade 0.2s ease-out forwards; }
+        .app-screen.active { display: flex; }
+        
         @keyframes subtlePulse {
-            0%, 100% { opacity: 0.15; filter: blur(90px); }
-            50% { opacity: 0.35; filter: blur(110px); }
+            0%, 100% { opacity: 0.15; filter: blur(90px); transform: scale(0.95); }
+            50% { opacity: 0.35; filter: blur(110px); transform: scale(1.05); }
         }
-        .ambient-aura {
-            animation: subtlePulse 5s ease-in-out infinite;
+        .ambient-aura { animation: subtlePulse 5s ease-in-out infinite; }
+        
+        @keyframes modalFade {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
         }
-        .home-bg {
-            background: radial-gradient(circle at center, #111115 0%, #050505 100%);
-        }
-        /* Custom layout optimization overrides for camera video container element */
-        #qr-reader video {
-            object-fit: cover !important;
-            border-radius: 12px;
-        }
-        #qr-reader {
-            border: none !important;
-        }
+        .animate-modal { animation: modalFade 0.25s ease-out forwards; }
+        
+        .waveform-pill { transition: width 0.1s linear, background-color 0.3s ease; }
+        #qr-reader video { object-fit: cover !important; border-radius: 12px; }
+        #qr-reader { border: none !important; }
     </style>
 </head>
-<body class="bg-[#020202] flex flex-col items-center justify-center min-h-screen text-white font-sans antialiased p-4 select-none">
+<body class="flex items-center justify-center min-h-screen text-white font-sans antialiased p-4 select-none">
 
-    <div class="relative phone-container bg-[#09090A] rounded-[48px] overflow-hidden flex flex-col justify-between p-6">
+<div class="phone-container flex flex-col items-center">
+    
+    <div id="view-lockscreen" class="system-view absolute inset-0 z-30 flex flex-col items-center pt-16 bg-[radial-gradient(circle_at_top_right,#1a1a24_0%,#050505_60%,#000000_100%)]">
+        <div class="flex flex-col items-center text-center space-y-1 mb-8">
+            <span class="system-clock text-7xl font-bold tracking-tight text-white/90" style="font-family: system-ui, -apple-system, sans-serif;">00:00</span>
+        </div>
         
-        <div class="flex justify-between items-center w-full px-4 text-[12px] font-medium text-gray-600 font-mono z-50">
-            <span id="system-time">9:41</span>
-            <div class="flex gap-2 items-center">
-                <span id="connection-indicator" class="text-red-500 font-bold text-[10px]">● DISCONNECTED</span>
-                <div class="w-5 h-2.5 border border-gray-700 rounded-sm p-0.5">
-                    <div class="bg-gray-600 h-full w-full rounded-2xs"></div>
+        <div onclick="switchToView('app')" class="w-[320px] p-4 flex flex-col rounded-[28px] bg-[#141416]/80 backdrop-blur-md border border-white/10 shadow-2xl relative z-20 cursor-pointer active:scale-95 transition-transform group overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-br from-[#D4A359]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div class="flex justify-between items-center px-1 mb-2 relative z-10">
+                <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 rounded-full bg-[#D4A359] animate-pulse"></div>
+                    <span class="text-[10px] font-mono tracking-widest text-gray-400 font-medium">HERTZ</span>
                 </div>
+                <span id="widget-status" class="text-[9px] font-mono text-gray-500 bg-[#161619] px-2 py-0.5 rounded-md border border-white/5 uppercase">Standalone</span>
+            </div>
+            <div class="space-y-0.5 relative z-10 mb-2">
+                <div id="widget-headline" class="text-[20px] font-mono tracking-wide font-light text-gray-500">Unlinked Mode</div>
+                <p id="widget-subline" class="text-[11px] font-mono text-gray-600 tracking-wider">Tap to scan partner code</p>
             </div>
         </div>
 
-        <div id="layer-home-screen" class="absolute inset-0 p-6 pt-12 flex flex-col justify-start z-40 home-bg transition-all duration-500 ease-out scale-100 opacity-100">
-            <div class="absolute w-48 h-48 bg-[#D4A359]/10 rounded-full top-1/4 left-1/3 blur-[60px] pointer-events-none"></div>
-            <span class="text-gray-500 font-mono text-[10px] tracking-[0.3em] mb-6 uppercase block text-center opacity-40">Lock Screen / Glance</span>
-
-            <div onclick="bootAppFromWidget()" class="w-full bg-[#0D0D0E]/90 border border-[#1C1C1F] rounded-3xl p-4 shadow-[0_12px_30px_rgba(0,0,0,0.5)] cursor-pointer hover:border-[#D4A359]/30 active:scale-98 transition-all group relative overflow-hidden">
-                <div class="absolute inset-0 bg-gradient-to-br from-[#D4A359]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                <div class="flex justify-between items-start mb-4 relative z-10">
-                    <div class="flex items-center gap-2">
-                        <div class="w-2 h-2 rounded-full bg-[#D4A359] animate-pulse"></div>
-                        <span class="text-[10px] font-mono tracking-widest text-gray-400 font-medium">HERTZ</span>
-                    </div>
-                    <span id="widget-status" class="text-[9px] font-mono text-gray-500 bg-[#161619] px-2 py-0.5 rounded-md border border-white/5 uppercase">Standalone</span>
-                </div>
-                <div class="space-y-0.5 relative z-10 mb-2">
-                    <div id="widget-headline" class="text-[20px] font-mono tracking-wide font-light text-gray-500">Unlinked Mode</div>
-                    <p id="widget-subline" class="text-[11px] font-mono text-gray-600 tracking-wider">Tap to scan partner code</p>
-                </div>
-                <div class="w-full h-8 flex items-center opacity-70">
-                    <svg viewBox="0 0 400 80" class="w-full">
-                        <path class="fill-none stroke-[#D4A359] stroke-[2] stroke-linecap-round" d="M0 40 C50 25 75 55 100 40 C125 25 150 55 175 40 C200 25 225 55 250 40 C275 25 325 55 400 40"/>
-                    </svg>
-                </div>
-                <div class="mt-2 text-right">
-                    <span class="text-[9px] font-mono text-[#D4A359]/70 group-hover:text-[#D4A359] transition-colors tracking-widest uppercase">Tap to open room →</span>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-4 gap-5 mt-8 px-2 pointer-events-none opacity-25">
-                <div class="flex flex-col items-center gap-1.5"><div class="w-12 h-12 bg-gray-800 rounded-xl"></div><div class="w-8 h-2 bg-gray-800 rounded"></div></div>
-                <div class="flex flex-col items-center gap-1.5"><div class="w-12 h-12 bg-gray-800 rounded-xl"></div><div class="w-8 h-2 bg-gray-800 rounded"></div></div>
-                <div class="flex flex-col items-center gap-1.5"><div class="w-12 h-12 bg-gray-800 rounded-xl"></div><div class="w-8 h-2 bg-gray-800 rounded"></div></div>
-                <div class="flex flex-col items-center gap-1.5"><div class="w-12 h-12 bg-gray-800 rounded-xl"></div><div class="w-8 h-2 bg-gray-800 rounded"></div></div>
-            </div>
+        <div class="absolute bottom-10 text-center w-full">
+            <span class="text-[10px] font-mono text-gray-500 uppercase tracking-widest opacity-60">Swipe Up to Unlock</span>
         </div>
-
-        <div id="layer-application-shell" class="absolute inset-0 p-6 pt-12 flex flex-col justify-between pointer-events-none opacity-0 scale-95 transition-all duration-500 ease-out z-10 bg-[#09090A]">
-            
-            <div id="screen-cockpit" class="app-screen active flex-col items-center justify-between flex-1 pt-6 pb-6 relative">
-                <div id="hearth-aura" class="absolute w-72 h-72 bg-[#D4A359] rounded-full top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 ambient-aura z-0 transition-all duration-300"></div>
-                
-                <div class="text-center z-10 font-mono">
-                    <h1 class="text-xs tracking-[0.6em] text-[#D4A359] font-light">SHARED HEARTH</h1>
-                    <p id="cockpit-status-text" class="text-[11px] text-gray-500 tracking-widest mt-1 uppercase">Awaiting Bond Setup</p>
-                </div>
-
-                <div onclick="sendHeartbeat()" class="w-full h-40 flex items-center justify-center z-10 cursor-pointer active:scale-95 transition-transform">
-                    <svg viewBox="0 0 400 80" class="w-[90%] overflow-visible">
-                        <path id="cockpit-wave" class="wave-line fill-none stroke-[#D4A359] stroke-[2] stroke-linecap-round filter drop-shadow-[0_0_10px_rgba(212,163,89,0.4)]" d="M0 40 C50 36 75 44 100 40 C125 36 150 44 175 40 C200 36 225 44 250 40 C275 36 325 44 400 40"/>
-                    </svg>
-                </div>
-
-                <div class="text-center font-mono z-10">
-                    <span id="hearth-instruction" class="text-[10px] tracking-[0.5em] text-gray-600 uppercase">Go to BOND tab to link</span>
-                </div>
-            </div>
-
-            <div id="screen-handshake" class="app-screen flex-col items-center justify-start flex-1 pt-2 pb-2 overflow-y-auto space-y-4">
-                <div class="w-full text-center px-4 font-mono">
-                    <h1 class="text-xs tracking-[0.4em] text-[#D4A359] font-light uppercase">Inseparable Bond</h1>
-                </div>
-
-                <div class="w-full bg-[#0D0D0E] border border-[#161619] rounded-2xl p-4 text-center flex flex-col items-center justify-center">
-                    <span class="text-[9px] font-mono tracking-[0.2em] text-gray-500 uppercase block mb-2">Option A: Your QR Code</span>
-                    <div id="qrcode-target" class="bg-white p-2 rounded-xl mb-2 flex items-center justify-center min-w-[140px] min-h-[140px]">
-                        <span class="text-[10px] text-black font-mono">Generating...</span>
-                    </div>
-                    <div id="my-peer-id" class="text-[9px] font-mono text-gray-600 tracking-wide break-all opacity-40 select-all">Waiting for id generation...</div>
-                </div>
-
-                <div class="w-full bg-[#0D0D0E] border border-[#161619] rounded-2xl p-4 flex flex-col items-center justify-center">
-                    <span class="text-[9px] font-mono tracking-[0.2em] text-gray-500 uppercase block mb-3">Option B: Scan Partner QR</span>
-                    
-                    <div class="w-full max-w-[220px] aspect-square bg-black rounded-xl overflow-hidden relative border border-white/5 flex items-center justify-center">
-                        <div id="qr-reader" class="absolute inset-0 w-full h-full"></div>
-                        <span id="scanner-placeholder" class="text-[10px] font-mono text-gray-700 uppercase tracking-widest text-center px-4 z-0">Camera Offline</span>
-                    </div>
-
-                    <button onclick="activateCameraScanner()" class="mt-4 w-full py-2.5 bg-[#D4A359]/10 border border-[#D4A359]/30 hover:border-[#D4A359]/60 text-[#D4A359] font-mono font-medium tracking-widest rounded-xl text-[10px] active:scale-98 transition">
-                        OPEN REAR CAMERA
-                    </button>
-                </div>
-                <p id="bond-status-text" class="text-[9px] font-mono text-center text-gray-600 pb-2">Status: Open camera or show your QR code to bind frames.</p>
-            </div>
-
-            <div id="screen-studio" class="app-screen flex-col items-center justify-between flex-1 pt-6 pb-6">
-                <div class="text-center font-mono">
-                    <h1 class="text-xs tracking-[0.4em] text-[#D4A359] font-light uppercase">Sensation Studio</h1>
-                    <p id="studio-instruction" class="text-[11px] text-gray-500 tracking-wider mt-1">Hold down your touch inside the pad to construct a pattern sequence.</p>
-                </div>
-
-                <div id="haptic-pad" onmousedown="startRecording(event)" onmouseup="stopRecording(event)" ontouchstart="startRecording(event)" ontouchend="stopRecording(event)" class="w-full h-52 bg-[#0D0D0E] border border-[#141416] rounded-2xl flex flex-col justify-center items-center cursor-pointer group active:border-[#D4A359]/20 transition-all shadow-inner relative overflow-hidden">
-                    <div id="pad-ripple-aura" class="absolute inset-0 bg-[#D4A359]/10 opacity-0 transition-opacity duration-150 pointer-events-none"></div>
-                    <div class="w-12 h-12 rounded-full border border-gray-800 group-hover:border-[#D4A359]/20 flex items-center justify-center transition-colors pointer-events-none">
-                        <div class="w-2 h-2 rounded-full bg-gray-700 group-hover:bg-[#D4A359] transition-colors"></div>
-                    </div>
-                    <span class="text-[10px] font-mono tracking-widest text-gray-600 mt-4 pointer-events-none">TOUCH CANVAS</span>
-                </div>
-
-                <div class="flex gap-2 w-full">
-                    <button onclick="clearSequence()" class="flex-1 py-2.5 bg-[#121214] border border-[#1c1c1f] rounded-xl text-[11px] font-mono tracking-widest text-gray-500 hover:text-gray-300 transition">ERASE</button>
-                    <button onclick="transmitSequence()" class="flex-1 py-2.5 bg-[#D4A359]/10 border border-[#D4A359]/20 rounded-xl text-[11px] font-mono tracking-widest text-[#D4A359] hover:bg-[#D4A359]/20 transition">BEAM RHYTHM</button>
-                </div>
-                <div class="h-2"></div>
-            </div>
-
-            <div id="app-navigation-dock" class="w-full bg-[#0D0D0E]/80 backdrop-blur-md rounded-2xl p-2.5 flex justify-around items-center border border-white/5 relative z-50">
-                <button onclick="switchAppTab('cockpit')" id="nav-cockpit" class="flex-1 py-2 flex flex-col items-center gap-1 text-[#D4A359] transition bg-transparent border-0 outline-none cursor-pointer">
-                    <span class="text-[10px] tracking-widest font-mono font-medium">HEARTH</span>
-                    <div class="w-1 h-1 rounded-full bg-[#D4A359]"></div>
-                </button>
-                <button onclick="switchAppTab('handshake')" id="nav-handshake" class="flex-1 py-2 flex flex-col items-center gap-1 text-gray-600 transition bg-transparent border-0 outline-none cursor-pointer">
-                    <span class="text-[10px] tracking-widest font-mono">BOND</span>
-                    <div class="w-1 h-1 rounded-full bg-transparent"></div>
-                </button>
-                <button onclick="switchAppTab('studio')" id="nav-studio" class="flex-1 py-2 flex flex-col items-center gap-1 text-gray-600 transition bg-transparent border-0 outline-none cursor-pointer">
-                    <span class="text-[10px] tracking-widest font-mono">STUDIO</span>
-                    <div class="w-1 h-1 rounded-full bg-transparent"></div>
-                </button>
-            </div>
-        </div>
-
-        <div class="w-full flex justify-center items-center h-4 relative z-50 mt-auto pt-2">
-            <div onclick="returnToHomeScreen()" class="w-32 h-1 bg-gray-700 hover:bg-gray-500 rounded-full cursor-pointer transition-colors"></div>
+        <div onclick="switchToView('homescreen')" class="absolute bottom-2 w-full flex justify-center items-center h-8 cursor-pointer z-50">
+            <div class="w-32 h-1.5 bg-white/50 rounded-full"></div>
         </div>
     </div>
 
-    <script>
-        const homeScreen = document.getElementById('layer-home-screen');
-        const appShell = document.getElementById('layer-application-shell');
+    <div id="view-homescreen" class="system-view absolute inset-0 z-20 flex flex-col items-center pt-16 bg-[#000] scale-105 opacity-0 pointer-events-none">
+        <div class="grid grid-cols-4 gap-x-5 gap-y-6 px-6 w-full mt-4">
+            <div class="flex flex-col items-center gap-1.5 opacity-20"><div class="w-[60px] h-[60px] bg-white rounded-[14px]"></div></div>
+            <div class="flex flex-col items-center gap-1.5 opacity-20"><div class="w-[60px] h-[60px] bg-white rounded-[14px]"></div></div>
+            <div class="flex flex-col items-center gap-1.5 opacity-20"><div class="w-[60px] h-[60px] bg-white rounded-[14px]"></div></div>
+            <div class="flex flex-col items-center gap-1.5 opacity-20"><div class="w-[60px] h-[60px] bg-white rounded-[14px]"></div></div>
+            
+            <div onclick="switchToView('app')" class="flex flex-col items-center gap-1.5 cursor-pointer active:scale-90 transition-transform group">
+                <div class="w-[60px] h-[60px] bg-[#121214] border border-[#2A2A2E] rounded-[14px] flex items-center justify-center relative overflow-hidden shadow-lg group-hover:border-[#D4A359]/40 transition-colors">
+                    <div class="absolute w-full h-full rounded-full border border-[#D4A359]/30 border-t-transparent rotate-45 scale-[1.6]"></div>
+                    <div class="w-5 h-5 bg-gradient-to-br from-[#E8C58A] to-[#D4A359] rounded-full shadow-[0_0_10px_rgba(212,163,89,0.5)]"></div>
+                </div>
+                <span class="text-[10px] font-mono text-gray-300 tracking-wider">HERTZ</span>
+            </div>
+        </div>
+        <div onclick="switchToView('lockscreen')" class="absolute top-4 left-4 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center cursor-pointer z-50"></div>
+        <div onclick="switchToView('app')" class="absolute bottom-2 w-full flex justify-center items-center h-8 cursor-pointer z-50">
+            <div class="w-32 h-1.5 bg-white/50 rounded-full"></div>
+        </div>
+    </div>
+
+    <div id="view-app" class="system-view absolute inset-0 z-40 bg-[#09090A] flex flex-col opacity-0 translate-y-full pointer-events-none p-6 pt-10 pb-4">
         
-        function bootAppFromWidget() {
-            homeScreen.classList.remove('scale-100', 'opacity-100');
-            homeScreen.classList.add('scale-105', 'opacity-0');
-            setTimeout(() => {
-                homeScreen.classList.add('pointer-events-none');
-                appShell.classList.remove('pointer-events-none', 'opacity-0', 'scale-95');
-                appShell.classList.add('opacity-100', 'scale-100', 'z-40');
-            }, 150);
-        }
+        <div class="flex justify-between items-center w-full px-2 text-[12px] font-medium text-gray-600 font-mono z-50 pb-4 border-b border-white/5">
+            <span class="system-clock">00:00</span>
+            <div class="flex gap-2 items-center">
+                <span id="app-conn-indicator" class="text-red-500 font-bold text-[9px] tracking-[0.2em] uppercase">• Offline</span>
+            </div>
+        </div>
 
-        function returnToHomeScreen() {
-            appShell.classList.remove('opacity-100', 'scale-100', 'z-40');
-            appShell.classList.add('pointer-events-none', 'opacity-0', 'scale-95');
+        <div class="flex-1 relative z-10 overflow-hidden mt-4">
             
-            // Clean shutdown of the camera feed if the application interface collapses
-            shutdownCamera();
+            <div id="tab-hearth" class="app-screen active flex-col items-center justify-center h-full relative pb-10">
+                <div id="hearth-aura" class="absolute w-64 h-64 bg-[#D4A359] rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 ambient-aura z-0 transition-all duration-300 pointer-events-none"></div>
+                <div class="text-center z-10 font-mono absolute top-4">
+                    <h1 class="text-xs tracking-[0.6em] text-[#D4A359] font-light uppercase">Shared Hearth</h1>
+                    <p id="hearth-status" class="text-[10px] text-gray-500 tracking-widest mt-2 uppercase">Awaiting Bond</p>
+                </div>
+                <div onclick="sendHeartbeat()" class="w-full h-48 flex items-center justify-center z-10 cursor-pointer active:scale-95 transition-transform">
+                    <svg viewBox="0 0 400 80" class="w-[90%] overflow-visible">
+                        <path id="cockpit-wave" class="fill-none stroke-[#D4A359] stroke-[2] stroke-linecap-round filter drop-shadow-[0_0_12px_rgba(212,163,89,0.5)] transition-all duration-300" d="M0 40 C50 36 75 44 100 40 C125 36 150 44 175 40 C200 36 225 44 250 40 C275 36 325 44 400 40"/>
+                    </svg>
+                </div>
+                <div class="text-center font-mono z-10 absolute bottom-12">
+                    <span id="hearth-instruction" class="text-[9px] tracking-[0.4em] text-gray-600 uppercase">Link in Bond tab to transmit</span>
+                </div>
+            </div>
 
-            setTimeout(() => {
-                homeScreen.classList.remove('pointer-events-none', 'scale-105', 'opacity-0');
-                homeScreen.classList.add('scale-100', 'opacity-100');
-            }, 150);
-        }
-
-        function switchAppTab(screenId) {
-            document.querySelectorAll('.app-screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(`screen-${screenId}`).classList.add('active');
-            document.querySelectorAll('[id^="nav-"]').forEach(btn => {
-                btn.classList.remove('text-[#D4A359]', 'text-gray-600');
-                btn.classList.add('text-gray-600');
-                if (btn.querySelector('div')) btn.querySelector('div').style.backgroundColor = 'transparent';
-            });
-            const activeNav = document.getElementById(`nav-${screenId}`);
-            if (activeNav) {
-                activeNav.classList.remove('text-gray-600');
-                activeNav.classList.add('text-[#D4A359]');
-                if (activeNav.querySelector('div')) activeNav.querySelector('div').style.backgroundColor = '#D4A359';
-            }
-            // Shut off camera sensor pipeline automatically if shifting away from BOND tab screen bounds
-            if (screenId !== 'handshake') {
-                shutdownCamera();
-            }
-        }
-
-        // WebRTC & QR Integration Pipeline Configuration
-        let localPeer = null;
-        let peerDataConnection = null;
-        let activeScannerInstance = null;
-        const connectionIndicator = document.getElementById('connection-indicator');
-        const myPeerIdDisplay = document.getElementById('my-peer-id');
-        const qrcodeTargetContainer = document.getElementById('qrcode-target');
-
-        function initializePeerEngine() {
-            localPeer = new Peer(null, { debug: 1 });
-
-            localPeer.on('open', function(id) {
-                myPeerIdDisplay.innerText = id;
-                connectionIndicator.innerText = "● CHANNELS OPEN";
-                connectionIndicator.className = "text-amber-500 font-bold text-[10px]";
+            <div id="tab-bond" class="app-screen flex-col items-center justify-start h-full overflow-y-auto space-y-4 pb-20">
+                <h1 class="text-xs tracking-[0.4em] text-[#D4A359] font-light uppercase w-full text-center">Device Handshake</h1>
                 
-                // Fire runtime generation parameters to construct a vector QR code block image layout
-                generateVectorQRCodeImage(id);
-            });
+                <div class="w-full bg-[#0D0D0E] border border-[#161619] rounded-2xl p-4 flex flex-col items-center">
+                    <span class="text-[9px] font-mono tracking-[0.2em] text-gray-500 uppercase mb-3">Your Tether Matrix</span>
+                    <div id="qrcode-target" class="bg-white p-2 rounded-xl mb-2 flex items-center justify-center min-w-[140px] min-h-[140px]">
+                        <span class="text-[10px] text-black font-mono">Generating...</span>
+                    </div>
+                    <div id="my-peer-id" class="text-[8px] font-mono text-gray-600 tracking-wide break-all opacity-40 select-all">Waiting for engine...</div>
+                </div>
 
-            localPeer.on('connection', function(conn) {
-                peerDataConnection = conn;
-                configureConnectionListeners();
-            });
+                <div class="w-full bg-[#0D0D0E] border border-[#161619] rounded-2xl p-4 flex flex-col items-center">
+                    <span class="text-[9px] font-mono tracking-[0.2em] text-gray-500 uppercase mb-3">Scan Partner Matrix</span>
+                    <div class="w-full max-w-[200px] aspect-square bg-black rounded-xl overflow-hidden relative border border-white/10 flex items-center justify-center">
+                        <div id="qr-reader" class="absolute inset-0 w-full h-full"></div>
+                        <span id="scanner-placeholder" class="text-[9px] font-mono text-gray-700 uppercase tracking-widest z-0">Sensor Offline</span>
+                    </div>
+                    <button onclick="activateCamera()" class="mt-4 w-full py-3 bg-[#D4A359]/10 border border-[#D4A359]/30 text-[#D4A359] font-mono font-medium tracking-widest rounded-xl text-[10px] active:scale-95 transition">
+                        OPEN OPTICAL SENSOR
+                    </button>
+                </div>
+            </div>
 
-            localPeer.on('error', function(err) {
-                console.error("Peer Runtime Exception: ", err);
-                document.getElementById('bond-status-text').innerText = "Frequency dropped. Re-initializing engine locks.";
-                document.getElementById('bond-status-text').className = "text-[9px] font-mono text-center text-red-500";
-            });
+            <div id="tab-studio" class="app-screen flex-col h-full overflow-y-auto pb-20">
+                <div class="text-center font-mono mb-4">
+                    <h1 class="text-xs tracking-[0.4em] text-[#D4A359] font-light uppercase">Sensation Studio</h1>
+                    <p id="studio-instruction" class="text-[9px] text-gray-500 tracking-wider mt-1 uppercase">Construct Tactile Dialect</p>
+                </div>
+
+                <div class="w-full bg-[#0D0D0E] border border-[#161619] rounded-xl p-3 h-14 flex items-center gap-1.5 overflow-hidden relative mb-4">
+                    <div id="visual-timeline-track" class="flex items-center gap-1 w-full h-full">
+                        <span id="timeline-placeholder" class="text-[8px] font-mono text-gray-700 tracking-widest uppercase mx-auto">Awaiting Input...</span>
+                    </div>
+                    <div id="tap-counter-badge" class="absolute bottom-1 right-2 text-[7px] font-mono text-gray-600 uppercase">0 Taps</div>
+                </div>
+
+                <div id="haptic-pad" class="w-full h-32 bg-[#0B0B0C] border border-[#18181A] rounded-2xl flex flex-col justify-center items-center cursor-pointer group active:border-[#D4A359]/20 transition-all relative overflow-hidden mb-4 shadow-inner">
+                    <div id="pad-ripple-aura" class="absolute inset-0 bg-[#D4A359]/10 opacity-0 transition-opacity duration-100 pointer-events-none"></div>
+                    <div class="w-10 h-10 rounded-full border border-gray-800 flex items-center justify-center transition-colors pointer-events-none group-hover:border-[#D4A359]/20">
+                        <div class="w-1.5 h-1.5 rounded-full bg-gray-700 group-hover:bg-[#D4A359] transition-colors"></div>
+                    </div>
+                    <span class="text-[8px] font-mono tracking-[0.3em] text-gray-600 mt-4 pointer-events-none">HOLD CANVAS</span>
+                </div>
+
+                <div class="flex gap-2 w-full mb-6">
+                    <button onclick="clearSequence()" class="flex-1 py-2.5 bg-[#121214] border border-[#1c1c1f] rounded-xl text-[9px] font-mono tracking-widest text-gray-500 hover:text-gray-300 transition uppercase">Erase</button>
+                    <button onclick="saveToDictionary()" class="flex-1 py-2.5 bg-[#D4A359]/10 border border-[#D4A359]/30 rounded-xl text-[9px] font-mono tracking-widest text-[#D4A359] active:bg-[#D4A359]/20 transition uppercase">Catalog Phrase</button>
+                </div>
+
+                <span class="text-[9px] font-mono tracking-[0.2em] text-gray-600 uppercase block mb-3 px-1 border-b border-white/5 pb-2">Your Dictionary (Max 3)</span>
+                <div id="dictionary-list" class="space-y-2 pb-6"></div>
+            </div>
+        </div>
+
+        <div class="absolute bottom-8 left-6 right-6 bg-[#0D0D0E]/90 backdrop-blur-md rounded-2xl p-1.5 flex justify-around items-center border border-white/5 z-50">
+            <button onclick="switchTab('bond')" id="nav-bond" class="nav-btn flex-1 py-2.5 flex flex-col items-center gap-1.5 text-gray-600 transition">
+                <span class="text-[9px] tracking-[0.2em] font-mono uppercase">Bond</span><div class="w-1 h-1 rounded-full bg-transparent transition-colors"></div>
+            </button>
+            <button onclick="switchTab('hearth')" id="nav-hearth" class="nav-btn active flex-1 py-2.5 flex flex-col items-center gap-1.5 text-[#D4A359] transition">
+                <span class="text-[9px] tracking-[0.2em] font-mono uppercase">Hearth</span><div class="w-1 h-1 rounded-full bg-[#D4A359] transition-colors"></div>
+            </button>
+            <button onclick="switchTab('studio')" id="nav-studio" class="nav-btn flex-1 py-2.5 flex flex-col items-center gap-1.5 text-gray-600 transition">
+                <span class="text-[9px] tracking-[0.2em] font-mono uppercase">Studio</span><div class="w-1 h-1 rounded-full bg-transparent transition-colors"></div>
+            </button>
+        </div>
+
+        <div onclick="switchToView('homescreen')" class="absolute bottom-2 w-full flex justify-center items-center h-8 cursor-pointer z-[100]">
+            <div class="w-32 h-1 bg-gray-700 hover:bg-gray-500 transition-colors rounded-full"></div>
+        </div>
+    </div>
+
+    <div id="paywall-overlay" class="absolute inset-0 bg-black/90 backdrop-blur-xl z-[60] flex items-center justify-center p-6 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="w-full bg-[#09090A] border border-[#D4A359]/20 rounded-[28px] p-6 text-center flex flex-col items-center space-y-5 shadow-[0_0_40px_rgba(212,163,89,0.1)]">
+            <div class="w-12 h-12 rounded-full bg-[#D4A359]/10 flex items-center justify-center border border-[#D4A359]/30"><span class="text-[#D4A359] text-sm">✦</span></div>
+            <div class="space-y-2">
+                <h2 class="text-[13px] font-mono tracking-widest text-[#D4A359] uppercase">Expand Syntax</h2>
+                <p class="text-[10px] font-mono text-gray-400 tracking-wide leading-relaxed">You've reached the library limit of 3 saved phrases. Upgrade to catalog an unlimited vocabulary.</p>
+            </div>
+            <div class="w-full space-y-2 pt-2">
+                <button onclick="closePaywall()" class="w-full py-3 bg-[#D4A359] text-black font-mono font-bold tracking-widest rounded-xl text-[10px] uppercase active:scale-95 transition">Unlock / $2.99</button>
+                <button onclick="closePaywall()" class="w-full py-2 text-gray-600 font-mono tracking-widest text-[9px] uppercase active:text-white transition">Return to Sandbox</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // --- OS NAVIGATION ---
+    const vLock = document.getElementById('view-lockscreen');
+    const vHome = document.getElementById('view-homescreen');
+    const vApp = document.getElementById('view-app');
+
+    function switchToView(viewName) {
+        vLock.style.opacity = '0'; vLock.style.pointerEvents = 'none'; vLock.style.transform = 'translateY(-20px)';
+        vHome.style.opacity = '0'; vHome.style.pointerEvents = 'none'; vHome.style.transform = 'scale(0.95)';
+        vApp.style.opacity = '0'; vApp.style.pointerEvents = 'none'; vApp.style.transform = 'translateY(100%)';
+
+        if(viewName === 'lockscreen') {
+            vLock.style.opacity = '1'; vLock.style.pointerEvents = 'auto'; vLock.style.transform = 'translateY(0)';
+        } else if(viewName === 'homescreen') {
+            vHome.style.opacity = '1'; vHome.style.pointerEvents = 'auto'; vHome.style.transform = 'scale(1)';
+        } else if(viewName === 'app') {
+            vApp.style.opacity = '1'; vApp.style.pointerEvents = 'auto'; vApp.style.transform = 'translateY(0)';
         }
+    }
 
-        // Generates the native QR Code array using standard library protocols
-        function generateVectorQRCodeImage(payloadText) {
+    setInterval(() => {
+        const d = new Date();
+        const timeStr = d.getHours().toString().padStart(2, '0') + ":" + d.getMinutes().toString().padStart(2, '0');
+        document.querySelectorAll('.system-clock').forEach(el => el.innerText = timeStr);
+    }, 1000);
+
+    // --- APP NAVIGATION ---
+    function switchTab(tabId) {
+        document.querySelectorAll('.app-screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(`tab-${tabId}`).classList.add('active');
+
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.classList.remove('text-[#D4A359]'); btn.classList.add('text-gray-600');
+            btn.querySelector('div').style.backgroundColor = 'transparent';
+        });
+
+        const activeBtn = document.getElementById(`nav-${tabId}`);
+        activeBtn.classList.remove('text-gray-600'); activeBtn.classList.add('text-[#D4A359]');
+        activeBtn.querySelector('div').style.backgroundColor = '#D4A359';
+
+        if(tabId !== 'bond') shutdownCamera();
+    }
+
+    // --- PEERJS ENGINE ---
+    let localPeer = null, dataConn = null, scanner = null;
+    
+    function initEngine() {
+        localPeer = new Peer();
+        localPeer.on('open', id => {
+            document.getElementById('my-peer-id').innerText = id;
             try {
-                // Instantiate Type 0 adaptive error correction matrix code structure
-                const qrGeneratorInstance = qrcode(0, 'M');
-                qrGeneratorInstance.addData(payloadText);
-                qrGeneratorInstance.make();
-                
-                // Export straight as an inline HTML img object reference tag string payload array
-                qrcodeTargetContainer.innerHTML = qrGeneratorInstance.createImgTag(4, 8);
-                const generatedImageElement = qrcodeTargetContainer.querySelector('img');
-                if (generatedImageElement) {
-                    generatedImageElement.className = "w-32 h-32 rounded-lg object-contain";
-                }
-            } catch (err) {
-                console.error("QR Rendering Error: ", err);
-                qrcodeTargetContainer.innerHTML = "<span class='text-[10px] text-red-500'>Matrix Error</span>";
-            }
+                const qr = qrcode(0, 'M'); qr.addData(id); qr.make();
+                const container = document.getElementById('qrcode-target');
+                container.innerHTML = qr.createImgTag(4, 8);
+                container.querySelector('img').className = "w-32 h-32 rounded-lg object-contain";
+            } catch(e) {}
+        });
+
+        localPeer.on('connection', conn => { dataConn = conn; setupConn(); });
+    }
+
+    function activateCamera() {
+        document.getElementById('scanner-placeholder').style.display = 'none';
+        scanner = new Html5Qrcode("qr-reader");
+        scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 150 },
+            (token) => { shutdownCamera(); connectToPartner(token); },
+            () => {}
+        ).catch(err => {
+            document.getElementById('scanner-placeholder').style.display = 'block';
+            document.getElementById('scanner-placeholder').innerText = "Camera Blocked";
+        });
+    }
+
+    function shutdownCamera() {
+        if(scanner && scanner.isScanning) {
+            scanner.stop().then(()=>scanner.clear()).catch(()=>{});
         }
+    }
 
-        // Camera Activation Lifecycle Pipeline Engine
-        function activateCameraScanner() {
-            const statusUpdateDisplay = document.getElementById('bond-status-text');
-            const placeholderDisplay = document.getElementById('scanner-placeholder');
-            
-            statusUpdateDisplay.innerText = "Requesting native OS hardware video track permissions...";
-            statusUpdateDisplay.className = "text-[9px] font-mono text-center text-amber-500";
-            placeholderDisplay.style.display = 'none';
+    function connectToPartner(token) { dataConn = localPeer.connect(token); setupConn(); }
 
-            activeScannerInstance = new Html5Qrcode("qr-reader");
+    function setupConn() {
+        dataConn.on('open', () => {
+            document.getElementById('app-conn-indicator').innerText = "• FREQUENCIES LINKED";
+            document.getElementById('app-conn-indicator').className = "text-emerald-500 font-bold text-[9px] font-mono tracking-[0.2em] uppercase";
             
-            // Invoke constraints forcing environmental camera selection parameters
-            activeScannerInstance.start(
-                { facingMode: "environment" },
-                { fps: 15, qrbox: { width: 160, height: 160 } },
-                (decodedTokenString) => {
-                    // Success Callback Matrix Hook
-                    statusUpdateDisplay.innerText = "Target code signature caught. Locking frequency channel...";
-                    statusUpdateDisplay.className = "text-[9px] font-mono text-center text-emerald-400";
-                    
-                    shutdownCamera();
-                    executeRemoteConnectionBond(decodedTokenString);
-                },
-                (scanDiagnosticLogs) => { /* Suppress continuous streaming log debug stacks */ }
-            ).catch(err => {
-                console.error("Camera Access Denied: ", err);
-                placeholderDisplay.style.display = 'block';
-                placeholderDisplay.innerText = "Camera Denied";
-                statusUpdateDisplay.innerText = "Error: Ensure HTTPS protocols and site permissions are active.";
-                statusUpdateDisplay.className = "text-[9px] font-mono text-center text-red-500";
+            document.getElementById('widget-status').innerText = "Synchronized";
+            document.getElementById('widget-headline').innerText = "Connected";
+            document.getElementById('widget-subline').innerText = "Channel streaming smoothly";
+
+            document.getElementById('hearth-status').innerText = "PRESENCE ACTIVE";
+            document.getElementById('hearth-instruction').innerText = "TAP WAVE TO TRANSMIT";
+            
+            if(navigator.vibrate) navigator.vibrate([40,30,40]);
+            switchTab('hearth');
+        });
+
+        dataConn.on('data', pkt => {
+            if(pkt.type === 'pulse') visualHeartbeat();
+            if(pkt.type === 'pattern') playRhythm(pkt.seq);
+        });
+
+        dataConn.on('close', () => {
+            document.getElementById('app-conn-indicator').innerText = "• OFFLINE";
+            document.getElementById('app-conn-indicator').className = "text-red-500 font-bold text-[9px] font-mono tracking-[0.2em] uppercase";
+            document.getElementById('widget-headline').innerText = "Unlinked Mode";
+            document.getElementById('widget-status').innerText = "Standalone";
+        });
+    }
+
+    function sendHeartbeat() {
+        if(!dataConn || !dataConn.open) return switchTab('bond');
+        visualHeartbeat();
+        dataConn.send({type: 'pulse'});
+    }
+
+    function visualHeartbeat() {
+        const wave = document.getElementById('cockpit-wave');
+        const aura = document.getElementById('hearth-aura');
+        
+        wave.setAttribute('d', 'M0 40 L140 40 L170 40 L190 12 L210 68 L230 40 L260 40 L400 40');
+        aura.style.transform = 'translate(-50%, -50%) scale(1.15)'; 
+        aura.style.backgroundColor = '#ffffff';
+        if(navigator.vibrate) navigator.vibrate(60);
+        
+        setTimeout(() => {
+            wave.setAttribute('d', 'M0 40 C50 36 75 44 100 40 C125 36 150 44 175 40 C200 36 225 44 250 40 C275 36 325 44 400 40');
+            aura.style.transform = 'translate(-50%, -50%) scale(1)'; 
+            aura.style.backgroundColor = '#D4A359';
+        }, 350);
+    }
+
+    // --- SENSATION STUDIO ---
+    let recSeq = [], tAnchor = 0, gAnchor = 0, isTouch = false, tCount = 0;
+    let vocab = [
+        { name: "Sensation Alpha", seq: [120, 100, 120] },
+        { name: "Thinking of You", seq: [80, 80, 200, 80, 200] }
+    ];
+
+    function renderDict() {
+        const list = document.getElementById('dictionary-list'); list.innerHTML = '';
+        vocab.forEach(v => {
+            let html = `<div onclick="sendPhrase('${v.name}')" class="w-full bg-[#121214] border border-[#1C1C1F] rounded-xl p-3 flex justify-between items-center mb-2 cursor-pointer active:scale-95 transition-transform group">
+                <div class="flex flex-col"><span class="text-[10px] text-gray-300 font-mono tracking-wide group-hover:text-[#D4A359] transition-colors">${v.name}</span><span class="text-[8px] text-gray-600 mt-1 font-mono uppercase">${Math.ceil(v.seq.length/2)} Taps</span></div>
+                <div class="flex items-end gap-1 h-3 opacity-80">`;
+            
+            v.seq.forEach((ms, i) => { 
+                if(i%2===0) html += `<div class="bg-[#D4A359] rounded-full h-1.5" style="width: ${Math.min(Math.max(ms/8,4),24)}px"></div>`; 
             });
-        }
+            html += `</div></div>`; list.innerHTML += html;
+        });
+    }
 
-        function shutdownCamera() {
-            const placeholderDisplay = document.getElementById('scanner-placeholder');
-            if (activeScannerInstance) {
-                activeScannerInstance.stop().then(() => {
-                    activeScannerInstance = null;
-                    if(placeholderDisplay) {
-                        placeholderDisplay.style.display = 'block';
-                        placeholderDisplay.innerText = "Camera Offline";
-                    }
-                }).catch(() => {});
+    const pad = document.getElementById('haptic-pad');
+    const track = document.getElementById('visual-timeline-track');
+
+    function touchStart(e) {
+        e.preventDefault();
+        isTouch = true; 
+        document.getElementById('pad-ripple-aura').style.opacity = '1';
+        const now = Date.now();
+        
+        if(document.getElementById('timeline-placeholder')) document.getElementById('timeline-placeholder').remove();
+        
+        if(recSeq.length > 0 && gAnchor > 0) {
+            const gap = now - gAnchor; recSeq.push(gap);
+            const el = document.createElement('div'); el.className = "h-1 bg-transparent shrink-0"; 
+            el.style.width = `${Math.min(gap/6, 16)}px`;
+            track.appendChild(el);
+        }
+        
+        tAnchor = now; tCount++; 
+        document.getElementById('tap-counter-badge').innerText = `${tCount} Taps`;
+        
+        const pill = document.createElement('div'); pill.id = `live-${recSeq.length}`;
+        pill.className = "h-2 bg-[#D4A359] rounded-full shrink-0 waveform-pill w-1";
+        track.appendChild(pill);
+        
+        if(navigator.vibrate) navigator.vibrate(20);
+
+        // Visual swelling effect
+        let fCount = 1;
+        pill.intervalTracker = setInterval(() => {
+            fCount += 4;
+            pill.style.width = `${Math.min(fCount, 40)}px`;
+        }, 15);
+    }
+
+    function touchEnd(e) {
+        if(!isTouch) return; e.preventDefault(); isTouch = false;
+        document.getElementById('pad-ripple-aura').style.opacity = '0';
+        
+        const dur = Date.now() - tAnchor; 
+        const pill = document.getElementById(`live-${recSeq.length}`);
+        
+        if(pill && pill.intervalTracker) clearInterval(pill.intervalTracker);
+        if(pill) pill.style.width = `${Math.min(Math.max(dur/6, 6), 40)}px`;
+        
+        if(dur > 20) { recSeq.push(dur); gAnchor = Date.now(); }
+    }
+
+    pad.addEventListener('mousedown', touchStart); pad.addEventListener('mouseup', touchEnd);
+    pad.addEventListener('touchstart', touchStart, {passive:false}); pad.addEventListener('touchend', touchEnd, {passive:false});
+
+    function clearSequence() {
+        recSeq = []; tCount = 0; gAnchor = 0;
+        track.innerHTML = '<span id="timeline-placeholder" class="text-[8px] font-mono text-gray-700 tracking-widest uppercase mx-auto">Awaiting Input...</span>';
+        document.getElementById('tap-counter-badge').innerText = "0 Taps";
+    }
+
+    function saveToDictionary() {
+        if(recSeq.length === 0) return;
+        if(vocab.length >= 3) return showPaywall();
+        if(recSeq.length % 2 === 0) recSeq.pop();
+        
+        vocab.unshift({ name: `Pattern ${vocab.length+1}`, seq: [...recSeq] });
+        renderDict(); clearSequence();
+    }
+
+    function sendPhrase(name) {
+        if(dataConn && dataConn.open) {
+            const phrase = vocab.find(v => v.name === name);
+            if(phrase) dataConn.send({type: 'pattern', seq: phrase.seq});
+        }
+    }
+
+    function playRhythm(seq) {
+        if(navigator.vibrate) navigator.vibrate(seq);
+        const aura = document.getElementById('hearth-aura');
+        let i = 0;
+        
+        function loop() {
+            if(i >= seq.length) { 
+                aura.style.backgroundColor = '#D4A359'; aura.style.transform = 'translate(-50%, -50%) scale(1)'; 
+                return; 
             }
-        }
-
-        function executeRemoteConnectionBond(partnerIdToken) {
-            peerDataConnection = localPeer.connect(partnerIdToken, { reliable: true });
-            configureConnectionListeners();
-        }
-
-        function configureConnectionListeners() {
-            if (!peerDataConnection) return;
-
-            peerDataConnection.on('open', function() {
-                connectionIndicator.innerText = "● BOUND TO PHONE";
-                connectionIndicator.className = "text-emerald-500 font-bold text-[10px]";
-                
-                document.getElementById('bond-status-text').innerText = "Handshake resolved. Frequencies linked.";
-                document.getElementById('bond-status-text').className = "text-[9px] font-mono text-center text-emerald-400";
-                document.getElementById('cockpit-status-text').innerText = "Linked Presence Live";
-                document.getElementById('hearth-instruction').innerText = "TAP THE WAVE TO TRANSMIT HEARTBEAT";
-                document.getElementById('widget-status').innerText = "Synchronized";
-                document.getElementById('widget-headline').innerText = "Connected";
-                document.getElementById('widget-subline').innerText = "Channel streaming smoothly";
-
-                if (navigator.vibrate) navigator.vibrate([40, 30, 40]);
-                switchAppTab('cockpit');
-            });
-
-            peerDataConnection.on('data', function(data) {
-                handleIncomingTelemetry(data);
-            });
-
-            peerDataConnection.on('close', function() {
-                connectionIndicator.innerText = "● DISCONNECTED";
-                connectionIndicator.className = "text-red-500 font-bold text-[10px]";
-                document.getElementById('bond-status-text').innerText = "Partner connection dropped.";
-                document.getElementById('bond-status-text').className = "text-[9px] font-mono text-center text-red-500";
-            });
-        }
-
-        function transmitPayload(payload) {
-            if (peerDataConnection && peerDataConnection.open) {
-                peerDataConnection.send(payload);
+            if(i%2===0) { 
+                aura.style.backgroundColor = '#ffffff'; aura.style.transform = 'translate(-50%, -50%) scale(1.2)'; 
+            } else { 
+                aura.style.backgroundColor = '#D4A359'; aura.style.transform = 'translate(-50%, -50%) scale(1)'; 
             }
+            setTimeout(() => { i++; loop(); }, seq[i]);
         }
+        if(document.getElementById('tab-hearth').classList.contains('active')) loop();
+    }
 
-        function handleIncomingTelemetry(packet) {
-            if (packet.type === "pulse") {
-                executeVisualHearthPulse();
-            } else if (packet.type === "pattern") {
-                executeSequencePlayback(packet.sequence);
-            }
-        }
+    // --- PAYWALL ---
+    function showPaywall() {
+        document.getElementById('paywall-overlay').classList.remove('opacity-0', 'pointer-events-none');
+        document.getElementById('paywall-overlay').querySelector('div').classList.add('animate-modal');
+    }
 
-        function sendHeartbeat() {
-            if (!peerDataConnection || !peerDataConnection.open) {
-                switchAppTab('handshake');
-                alert("Please open the BOND tab and scan your partner's QR code first!");
-                return;
-            }
-            executeVisualHearthPulse();
-            transmitPayload({ type: "pulse" });
-        }
+    function closePaywall() {
+        document.getElementById('paywall-overlay').classList.add('opacity-0', 'pointer-events-none');
+        document.getElementById('paywall-overlay').querySelector('div').classList.remove('animate-modal');
+        clearSequence();
+    }
 
-        function executeVisualHearthPulse() {
-            const wave = document.getElementById('cockpit-wave');
-            const hearthAura = document.getElementById('hearth-aura');
-            
-            wave.setAttribute('d', 'M0 40 L140 40 L170 40 L190 12 L210 68 L230 40 L260 40 L400 40');
-            hearthAura.style.transform = 'translate(-50%, -50%) scale(1.25)';
-            hearthAura.style.backgroundColor = '#ffffff';
-
-            if (navigator.vibrate) navigator.vibrate(60);
-
-            setTimeout(() => {
-                wave.setAttribute('d', 'M0 40 C50 36 75 44 100 40 C125 36 150 44 175 40 C200 36 225 44 250 40 C275 36 325 44 400 40');
-                hearthAura.style.transform = 'translate(-50%, -50%) scale(1)';
-                hearthAura.style.backgroundColor = '#D4A359';
-            }, 400);
-        }
-
-        // Sensation Studio Logic
-        let recordedSequence = [];
-        let timingAnchor = 0;
-        let gapAnchor = 0;
-        const padAura = document.getElementById('pad-ripple-aura');
-        const studioInstruction = document.getElementById('studio-instruction');
-
-        function startRecording(e) {
-            e.preventDefault();
-            padAura.style.opacity = '1';
-            const rightNow = Date.now();
-            
-            if (recordedSequence.length > 0 && gapAnchor > 0) {
-                recordedSequence.push(rightNow - gapAnchor); 
-            }
-            timingAnchor = rightNow;
-            if (navigator.vibrate) navigator.vibrate(20);
-        }
-
-        function stopRecording(e) {
-            e.preventDefault();
-            padAura.style.opacity = '0';
-            const pressDuration = Date.now() - timingAnchor;
-            
-            if (pressDuration > 20) {
-                recordedSequence.push(pressDuration);
-                gapAnchor = Date.now();
-                studioInstruction.innerText = `Arranged Sensation: ${recordedSequence.filter((_, i) => i % 2 === 0).length} Taps saved`;
-                studioInstruction.style.color = '#D4A359';
-            }
-        }
-
-        function clearSequence() {
-            recordedSequence = [];
-            studioInstruction.innerText = "Canvas wiped clean. Begin when ready.";
-            studioInstruction.style.color = '';
-        }
-
-        function transmitSequence() {
-            if (recordedSequence.length === 0) return alert("Construct a rhythm sequence first.");
-            if (!peerDataConnection || !peerDataConnection.open) return alert("Devices must be bonded to beam data.");
-            
-            transmitPayload({ type: "pattern", sequence: recordedSequence });
-            studioInstruction.innerText = "Rhythm pattern beamed across space!";
-            setTimeout(() => { studioInstruction.style.color = ''; studioInstruction.innerText = "Hold down your touch inside the pad to construct a pattern sequence."; }, 2000);
-            clearSequence();
-        }
-
-        function executeSequencePlayback(sequence) {
-            if (!sequence || sequence.length === 0) return;
-            
-            studioInstruction.innerText = "Receiving foreign rhythm arrangement...";
-            studioInstruction.style.color = '#ffffff';
-
-            if (navigator.vibrate) navigator.vibrate(sequence);
-
-            let index = 0;
-            function runVisualFlashLoop() {
-                if (index >= sequence.length) {
-                    padAura.style.opacity = '0';
-                    studioInstruction.innerText = "Pattern arrangement fully absorbed.";
-                    studioInstruction.style.color = '#D4A359';
-                    return;
-                }
-                const duration = sequence[index];
-                if (index % 2 === 0) {
-                    padAura.style.opacity = '1'; 
-                    setTimeout(() => { index++; runVisualFlashLoop(); }, duration);
-                } else {
-                    padAura.style.opacity = '0'; 
-                    setTimeout(() => { index++; runVisualFlashLoop(); }, duration);
-                }
-            }
-            runVisualFlashLoop();
-        }
-
-        // Live system clock rendering parameters
-        setInterval(() => {
-            const d = new Date();
-            document.getElementById('system-time').innerText = d.getHours().toString().padStart(2, '0') + ":" + d.getMinutes().toString().padStart(2, '0');
-        }, 1000);
-
-        window.addEventListener('DOMContentLoaded', initializePeerEngine);
-    </script>
+    window.addEventListener('DOMContentLoaded', () => { initEngine(); renderDict(); });
+</script>
 </body>
 </html>
