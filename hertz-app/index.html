@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HERTZ - Cross-Device Live Demo</title>
+    <title>HERTZ - Camera Bond Demo</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
         .phone-container {
             width: 375px;
@@ -32,6 +34,14 @@
         }
         .home-bg {
             background: radial-gradient(circle at center, #111115 0%, #050505 100%);
+        }
+        /* Custom layout optimization overrides for camera video container element */
+        #qr-reader video {
+            object-fit: cover !important;
+            border-radius: 12px;
+        }
+        #qr-reader {
+            border: none !important;
         }
     </style>
 </head>
@@ -64,7 +74,7 @@
                 </div>
                 <div class="space-y-0.5 relative z-10 mb-2">
                     <div id="widget-headline" class="text-[20px] font-mono tracking-wide font-light text-gray-500">Unlinked Mode</div>
-                    <p id="widget-subline" class="text-[11px] font-mono text-gray-600 tracking-wider">Set a bond key to link windows</p>
+                    <p id="widget-subline" class="text-[11px] font-mono text-gray-600 tracking-wider">Tap to scan partner code</p>
                 </div>
                 <div class="w-full h-8 flex items-center opacity-70">
                     <svg viewBox="0 0 400 80" class="w-full">
@@ -105,29 +115,32 @@
                 </div>
             </div>
 
-            <div id="screen-handshake" class="app-screen flex-col items-center justify-between flex-1 pt-6 pb-6">
+            <div id="screen-handshake" class="app-screen flex-col items-center justify-start flex-1 pt-2 pb-2 overflow-y-auto space-y-4">
                 <div class="w-full text-center px-4 font-mono">
                     <h1 class="text-xs tracking-[0.4em] text-[#D4A359] font-light uppercase">Inseparable Bond</h1>
-                    <p class="text-[11px] text-gray-500 tracking-wider mt-2">Connect two separate physical devices over the internet seamlessly.</p>
                 </div>
 
-                <div class="w-full px-2 space-y-4">
-                    <div class="bg-[#0D0D0E] border border-[#161619] rounded-2xl p-4 text-center">
-                        <span class="text-[9px] font-mono tracking-[0.3em] text-gray-600 uppercase block mb-1">Your Device Code</span>
-                        <div id="my-peer-id" class="text-sm font-mono text-[#D4A359] tracking-wider font-light break-all select-all p-1 bg-[#121214] border border-white/5 rounded-md cursor-pointer">GENERATING...</div>
+                <div class="w-full bg-[#0D0D0E] border border-[#161619] rounded-2xl p-4 text-center flex flex-col items-center justify-center">
+                    <span class="text-[9px] font-mono tracking-[0.2em] text-gray-500 uppercase block mb-2">Option A: Your QR Code</span>
+                    <div id="qrcode-target" class="bg-white p-2 rounded-xl mb-2 flex items-center justify-center min-w-[140px] min-h-[140px]">
+                        <span class="text-[10px] text-black font-mono">Generating...</span>
+                    </div>
+                    <div id="my-peer-id" class="text-[9px] font-mono text-gray-600 tracking-wide break-all opacity-40 select-all">Waiting for id generation...</div>
+                </div>
+
+                <div class="w-full bg-[#0D0D0E] border border-[#161619] rounded-2xl p-4 flex flex-col items-center justify-center">
+                    <span class="text-[9px] font-mono tracking-[0.2em] text-gray-500 uppercase block mb-3">Option B: Scan Partner QR</span>
+                    
+                    <div class="w-full max-w-[220px] aspect-square bg-black rounded-xl overflow-hidden relative border border-white/5 flex items-center justify-center">
+                        <div id="qr-reader" class="absolute inset-0 w-full h-full"></div>
+                        <span id="scanner-placeholder" class="text-[10px] font-mono text-gray-700 uppercase tracking-widest text-center px-4 z-0">Camera Offline</span>
                     </div>
 
-                    <div class="h-[1px] bg-gray-800 w-full my-2"></div>
-
-                    <div>
-                        <label class="text-[9px] font-mono tracking-widest text-gray-500 uppercase block mb-1.5 text-center">Enter Partner's Device Code</label>
-                        <input id="bond-input" type="text" placeholder="PASTE CODE HERE" class="w-full bg-[#0D0D0E] border border-[#161619] focus:border-[#D4A359]/60 rounded-xl py-3 px-4 text-center font-mono text-xs tracking-widest text-white placeholder-gray-800 outline-none transition uppercase">
-                    </div>
-                    <button onclick="establishBond()" class="w-full py-3 bg-[#D4A359] text-black font-mono font-medium tracking-widest rounded-xl text-xs active:scale-98 transition">
-                        LINK TO PARTNER
+                    <button onclick="activateCameraScanner()" class="mt-4 w-full py-2.5 bg-[#D4A359]/10 border border-[#D4A359]/30 hover:border-[#D4A359]/60 text-[#D4A359] font-mono font-medium tracking-widest rounded-xl text-[10px] active:scale-98 transition">
+                        OPEN REAR CAMERA
                     </button>
-                    <p id="bond-status-text" class="text-[10px] font-mono text-center text-gray-600">Status: Copy your code or paste theirs to begin.</p>
                 </div>
+                <p id="bond-status-text" class="text-[9px] font-mono text-center text-gray-600 pb-2">Status: Open camera or show your QR code to bind frames.</p>
             </div>
 
             <div id="screen-studio" class="app-screen flex-col items-center justify-between flex-1 pt-6 pb-6">
@@ -172,17 +185,6 @@
         </div>
     </div>
 
-    <div class="mt-6 max-w-sm text-center space-y-2 font-mono">
-        <p class="text-xs text-gray-400">
-            <strong>Testing Across Mobile Phones:</strong>
-        </p>
-        <ul class="text-[11px] text-gray-500 text-left list-decimal space-y-1 px-4">
-            <li>Open this Pen on <strong>Phone A</strong> and <strong>Phone B</strong>.</li>
-            <li>Go to the <strong>BOND</strong> tab on Phone A, tap the device code to copy it, and send it to Phone B.</li>
-            <li>On Phone B, paste that code into the input field and hit <strong>LINK TO PARTNER</strong>.</li>
-        </ul>
-    </div>
-
     <script>
         const homeScreen = document.getElementById('layer-home-screen');
         const appShell = document.getElementById('layer-application-shell');
@@ -200,6 +202,10 @@
         function returnToHomeScreen() {
             appShell.classList.remove('opacity-100', 'scale-100', 'z-40');
             appShell.classList.add('pointer-events-none', 'opacity-0', 'scale-95');
+            
+            // Clean shutdown of the camera feed if the application interface collapses
+            shutdownCamera();
+
             setTimeout(() => {
                 homeScreen.classList.remove('pointer-events-none', 'scale-105', 'opacity-0');
                 homeScreen.classList.add('scale-100', 'opacity-100');
@@ -220,13 +226,19 @@
                 activeNav.classList.add('text-[#D4A359]');
                 if (activeNav.querySelector('div')) activeNav.querySelector('div').style.backgroundColor = '#D4A359';
             }
+            // Shut off camera sensor pipeline automatically if shifting away from BOND tab screen bounds
+            if (screenId !== 'handshake') {
+                shutdownCamera();
+            }
         }
 
-        // Defensive WebRTC Peer Architecture Setup
+        // WebRTC & QR Integration Pipeline Configuration
         let localPeer = null;
         let peerDataConnection = null;
+        let activeScannerInstance = null;
         const connectionIndicator = document.getElementById('connection-indicator');
         const myPeerIdDisplay = document.getElementById('my-peer-id');
+        const qrcodeTargetContainer = document.getElementById('qrcode-target');
 
         function initializePeerEngine() {
             localPeer = new Peer(null, { debug: 1 });
@@ -235,45 +247,105 @@
                 myPeerIdDisplay.innerText = id;
                 connectionIndicator.innerText = "● CHANNELS OPEN";
                 connectionIndicator.className = "text-amber-500 font-bold text-[10px]";
+                
+                // Fire runtime generation parameters to construct a vector QR code block image layout
+                generateVectorQRCodeImage(id);
             });
 
-            // Triggered when a remote connection targets this device ID
             localPeer.on('connection', function(conn) {
                 peerDataConnection = conn;
                 configureConnectionListeners();
             });
 
             localPeer.on('error', function(err) {
-                console.error("Peer Engine Error: ", err);
-                document.getElementById('bond-status-text').innerText = "Connection lost. Retry handshake.";
-                document.getElementById('bond-status-text').className = "text-[10px] font-mono text-center text-red-400";
+                console.error("Peer Runtime Exception: ", err);
+                document.getElementById('bond-status-text').innerText = "Frequency dropped. Re-initializing engine locks.";
+                document.getElementById('bond-status-text').className = "text-[9px] font-mono text-center text-red-500";
             });
         }
 
-        function establishBond() {
-            const targetPeerId = document.getElementById('bond-input').value.trim();
-            if(!targetPeerId) return alert("Please paste your partner's code.");
-            
-            document.getElementById('bond-status-text').innerText = "Connecting to frequency cloud...";
-            document.getElementById('bond-status-text').className = "text-[10px] font-mono text-center text-amber-400";
+        // Generates the native QR Code array using standard library protocols
+        function generateVectorQRCodeImage(payloadText) {
+            try {
+                // Instantiate Type 0 adaptive error correction matrix code structure
+                const qrGeneratorInstance = qrcode(0, 'M');
+                qrGeneratorInstance.addData(payloadText);
+                qrGeneratorInstance.make();
+                
+                // Export straight as an inline HTML img object reference tag string payload array
+                qrcodeTargetContainer.innerHTML = qrGeneratorInstance.createImgTag(4, 8);
+                const generatedImageElement = qrcodeTargetContainer.querySelector('img');
+                if (generatedImageElement) {
+                    generatedImageElement.className = "w-32 h-32 rounded-lg object-contain";
+                }
+            } catch (err) {
+                console.error("QR Rendering Error: ", err);
+                qrcodeTargetContainer.innerHTML = "<span class='text-[10px] text-red-500'>Matrix Error</span>";
+            }
+        }
 
-            // Establish secure pipeline link parameters
-            peerDataConnection = localPeer.connect(targetPeerId, { reliable: true });
+        // Camera Activation Lifecycle Pipeline Engine
+        function activateCameraScanner() {
+            const statusUpdateDisplay = document.getElementById('bond-status-text');
+            const placeholderDisplay = document.getElementById('scanner-placeholder');
+            
+            statusUpdateDisplay.innerText = "Requesting native OS hardware video track permissions...";
+            statusUpdateDisplay.className = "text-[9px] font-mono text-center text-amber-500";
+            placeholderDisplay.style.display = 'none';
+
+            activeScannerInstance = new Html5Qrcode("qr-reader");
+            
+            // Invoke constraints forcing environmental camera selection parameters
+            activeScannerInstance.start(
+                { facingMode: "environment" },
+                { fps: 15, qrbox: { width: 160, height: 160 } },
+                (decodedTokenString) => {
+                    // Success Callback Matrix Hook
+                    statusUpdateDisplay.innerText = "Target code signature caught. Locking frequency channel...";
+                    statusUpdateDisplay.className = "text-[9px] font-mono text-center text-emerald-400";
+                    
+                    shutdownCamera();
+                    executeRemoteConnectionBond(decodedTokenString);
+                },
+                (scanDiagnosticLogs) => { /* Suppress continuous streaming log debug stacks */ }
+            ).catch(err => {
+                console.error("Camera Access Denied: ", err);
+                placeholderDisplay.style.display = 'block';
+                placeholderDisplay.innerText = "Camera Denied";
+                statusUpdateDisplay.innerText = "Error: Ensure HTTPS protocols and site permissions are active.";
+                statusUpdateDisplay.className = "text-[9px] font-mono text-center text-red-500";
+            });
+        }
+
+        function shutdownCamera() {
+            const placeholderDisplay = document.getElementById('scanner-placeholder');
+            if (activeScannerInstance) {
+                activeScannerInstance.stop().then(() => {
+                    activeScannerInstance = null;
+                    if(placeholderDisplay) {
+                        placeholderDisplay.style.display = 'block';
+                        placeholderDisplay.innerText = "Camera Offline";
+                    }
+                }).catch(() => {});
+            }
+        }
+
+        function executeRemoteConnectionBond(partnerIdToken) {
+            peerDataConnection = localPeer.connect(partnerIdToken, { reliable: true });
             configureConnectionListeners();
         }
 
         function configureConnectionListeners() {
-            // Guard clause checking if the initialization completed successfully
             if (!peerDataConnection) return;
 
             peerDataConnection.on('open', function() {
                 connectionIndicator.innerText = "● BOUND TO PHONE";
                 connectionIndicator.className = "text-emerald-500 font-bold text-[10px]";
                 
-                document.getElementById('bond-status-text').innerText = "Device Linked Successfully.";
-                document.getElementById('bond-status-text').className = "text-[10px] font-mono text-center text-emerald-400";
+                document.getElementById('bond-status-text').innerText = "Handshake resolved. Frequencies linked.";
+                document.getElementById('bond-status-text').className = "text-[9px] font-mono text-center text-emerald-400";
                 document.getElementById('cockpit-status-text').innerText = "Linked Presence Live";
-                document.getElementById('hearth-instruction').innerText = "TAP THE WAVE TO SEND PULSE";
+                document.getElementById('hearth-instruction').innerText = "TAP THE WAVE TO TRANSMIT HEARTBEAT";
                 document.getElementById('widget-status').innerText = "Synchronized";
                 document.getElementById('widget-headline').innerText = "Connected";
                 document.getElementById('widget-subline').innerText = "Channel streaming smoothly";
@@ -289,8 +361,8 @@
             peerDataConnection.on('close', function() {
                 connectionIndicator.innerText = "● DISCONNECTED";
                 connectionIndicator.className = "text-red-500 font-bold text-[10px]";
-                document.getElementById('bond-status-text').innerText = "Partner disconnected.";
-                document.getElementById('bond-status-text').className = "text-[10px] font-mono text-center text-red-400";
+                document.getElementById('bond-status-text').innerText = "Partner connection dropped.";
+                document.getElementById('bond-status-text').className = "text-[9px] font-mono text-center text-red-500";
             });
         }
 
@@ -311,7 +383,7 @@
         function sendHeartbeat() {
             if (!peerDataConnection || !peerDataConnection.open) {
                 switchAppTab('handshake');
-                alert("Please connect your phone to another device via the BOND tab first!");
+                alert("Please open the BOND tab and scan your partner's QR code first!");
                 return;
             }
             executeVisualHearthPulse();
@@ -411,19 +483,11 @@
             runVisualFlashLoop();
         }
 
+        // Live system clock rendering parameters
         setInterval(() => {
             const d = new Date();
             document.getElementById('system-time').innerText = d.getHours().toString().padStart(2, '0') + ":" + d.getMinutes().toString().padStart(2, '0');
         }, 1000);
-
-        // Click handler to manually focus selection text inside code box
-        myPeerIdDisplay.addEventListener('click', () => {
-            const selection = window.getSelection();
-            const range = document.createRange();
-            range.selectNodeContents(myPeerIdDisplay);
-            selection.removeAllRanges();
-            selection.addRange(range);
-        });
 
         window.addEventListener('DOMContentLoaded', initializePeerEngine);
     </script>
