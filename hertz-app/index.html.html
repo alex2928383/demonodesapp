@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HERTZ - Cross-Device Live Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
+    <style>
+        .phone-container {
+            width: 375px;
+            height: 760px;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.8);
+            border: 4px solid #161618;
+        }
+        .app-screen {
+            display: none;
+            transition: opacity 0.3s ease;
+        }
+        .app-screen.active {
+            display: flex;
+        }
+        .wave-line {
+            transition: d 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes subtlePulse {
+            0%, 100% { opacity: 0.15; filter: blur(90px); }
+            50% { opacity: 0.35; filter: blur(110px); }
+        }
+        .ambient-aura {
+            animation: subtlePulse 5s ease-in-out infinite;
+        }
+        .home-bg {
+            background: radial-gradient(circle at center, #111115 0%, #050505 100%);
+        }
+    </style>
+</head>
+<body class="bg-[#020202] flex flex-col items-center justify-center min-h-screen text-white font-sans antialiased p-4 select-none">
+
+    <div class="relative phone-container bg-[#09090A] rounded-[48px] overflow-hidden flex flex-col justify-between p-6">
+        
+        <div class="flex justify-between items-center w-full px-4 text-[12px] font-medium text-gray-600 font-mono z-50">
+            <span id="system-time">9:41</span>
+            <div class="flex gap-2 items-center">
+                <span id="connection-indicator" class="text-red-500 font-bold text-[10px]">● DISCONNECTED</span>
+                <div class="w-5 h-2.5 border border-gray-700 rounded-sm p-0.5">
+                    <div class="bg-gray-600 h-full w-full rounded-2xs"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="layer-home-screen" class="absolute inset-0 p-6 pt-12 flex flex-col justify-start z-40 home-bg transition-all duration-500 ease-out scale-100 opacity-100">
+            <div class="absolute w-48 h-48 bg-[#D4A359]/10 rounded-full top-1/4 left-1/3 blur-[60px] pointer-events-none"></div>
+            <span class="text-gray-500 font-mono text-[10px] tracking-[0.3em] mb-6 uppercase block text-center opacity-40">Lock Screen / Glance</span>
+
+            <div onclick="bootAppFromWidget()" class="w-full bg-[#0D0D0E]/90 border border-[#1C1C1F] rounded-3xl p-4 shadow-[0_12px_30px_rgba(0,0,0,0.5)] cursor-pointer hover:border-[#D4A359]/30 active:scale-98 transition-all group relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-br from-[#D4A359]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="flex justify-between items-start mb-4 relative z-10">
+                    <div class="flex items-center gap-2">
+                        <div class="w-2 h-2 rounded-full bg-[#D4A359] animate-pulse"></div>
+                        <span class="text-[10px] font-mono tracking-widest text-gray-400 font-medium">HERTZ</span>
+                    </div>
+                    <span id="widget-status" class="text-[9px] font-mono text-gray-500 bg-[#161619] px-2 py-0.5 rounded-md border border-white/5 uppercase">Standalone</span>
+                </div>
+                <div class="space-y-0.5 relative z-10 mb-2">
+                    <div id="widget-headline" class="text-[20px] font-mono tracking-wide font-light text-gray-500">Unlinked Mode</div>
+                    <p id="widget-subline" class="text-[11px] font-mono text-gray-600 tracking-wider">Set a bond key to link windows</p>
+                </div>
+                <div class="w-full h-8 flex items-center opacity-70">
+                    <svg viewBox="0 0 400 80" class="w-full">
+                        <path class="fill-none stroke-[#D4A359] stroke-[2] stroke-linecap-round" d="M0 40 C50 25 75 55 100 40 C125 25 150 55 175 40 C200 25 225 55 250 40 C275 25 325 55 400 40"/>
+                    </svg>
+                </div>
+                <div class="mt-2 text-right">
+                    <span class="text-[9px] font-mono text-[#D4A359]/70 group-hover:text-[#D4A359] transition-colors tracking-widest uppercase">Tap to open room →</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-4 gap-5 mt-8 px-2 pointer-events-none opacity-25">
+                <div class="flex flex-col items-center gap-1.5"><div class="w-12 h-12 bg-gray-800 rounded-xl"></div><div class="w-8 h-2 bg-gray-800 rounded"></div></div>
+                <div class="flex flex-col items-center gap-1.5"><div class="w-12 h-12 bg-gray-800 rounded-xl"></div><div class="w-8 h-2 bg-gray-800 rounded"></div></div>
+                <div class="flex flex-col items-center gap-1.5"><div class="w-12 h-12 bg-gray-800 rounded-xl"></div><div class="w-8 h-2 bg-gray-800 rounded"></div></div>
+                <div class="flex flex-col items-center gap-1.5"><div class="w-12 h-12 bg-gray-800 rounded-xl"></div><div class="w-8 h-2 bg-gray-800 rounded"></div></div>
+            </div>
+        </div>
+
+        <div id="layer-application-shell" class="absolute inset-0 p-6 pt-12 flex flex-col justify-between pointer-events-none opacity-0 scale-95 transition-all duration-500 ease-out z-10 bg-[#09090A]">
+            
+            <div id="screen-cockpit" class="app-screen active flex-col items-center justify-between flex-1 pt-6 pb-6 relative">
+                <div id="hearth-aura" class="absolute w-72 h-72 bg-[#D4A359] rounded-full top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 ambient-aura z-0 transition-all duration-300"></div>
+                
+                <div class="text-center z-10 font-mono">
+                    <h1 class="text-xs tracking-[0.6em] text-[#D4A359] font-light">SHARED HEARTH</h1>
+                    <p id="cockpit-status-text" class="text-[11px] text-gray-500 tracking-widest mt-1 uppercase">Awaiting Bond Setup</p>
+                </div>
+
+                <div onclick="sendHeartbeat()" class="w-full h-40 flex items-center justify-center z-10 cursor-pointer active:scale-95 transition-transform">
+                    <svg viewBox="0 0 400 80" class="w-[90%] overflow-visible">
+                        <path id="cockpit-wave" class="wave-line fill-none stroke-[#D4A359] stroke-[2] stroke-linecap-round filter drop-shadow-[0_0_10px_rgba(212,163,89,0.4)]" d="M0 40 C50 36 75 44 100 40 C125 36 150 44 175 40 C200 36 225 44 250 40 C275 36 325 44 400 40"/>
+                    </svg>
+                </div>
+
+                <div class="text-center font-mono z-10">
+                    <span id="hearth-instruction" class="text-[10px] tracking-[0.5em] text-gray-600 uppercase">Go to BOND tab to link</span>
+                </div>
+            </div>
+
+            <div id="screen-handshake" class="app-screen flex-col items-center justify-between flex-1 pt-6 pb-6">
+                <div class="w-full text-center px-4 font-mono">
+                    <h1 class="text-xs tracking-[0.4em] text-[#D4A359] font-light uppercase">Inseparable Bond</h1>
+                    <p class="text-[11px] text-gray-500 tracking-wider mt-2">Connect two separate physical devices over the internet seamlessly.</p>
+                </div>
+
+                <div class="w-full px-2 space-y-4">
+                    <div class="bg-[#0D0D0E] border border-[#161619] rounded-2xl p-4 text-center">
+                        <span class="text-[9px] font-mono tracking-[0.3em] text-gray-600 uppercase block mb-1">Your Device Code</span>
+                        <div id="my-peer-id" class="text-sm font-mono text-[#D4A359] tracking-wider font-light break-all select-all p-1 bg-[#121214] border border-white/5 rounded-md cursor-pointer">GENERATING...</div>
+                    </div>
+
+                    <div class="h-[1px] bg-gray-800 w-full my-2"></div>
+
+                    <div>
+                        <label class="text-[9px] font-mono tracking-widest text-gray-500 uppercase block mb-1.5 text-center">Enter Partner's Device Code</label>
+                        <input id="bond-input" type="text" placeholder="PASTE CODE HERE" class="w-full bg-[#0D0D0E] border border-[#161619] focus:border-[#D4A359]/60 rounded-xl py-3 px-4 text-center font-mono text-xs tracking-widest text-white placeholder-gray-800 outline-none transition uppercase">
+                    </div>
+                    <button onclick="establishBond()" class="w-full py-3 bg-[#D4A359] text-black font-mono font-medium tracking-widest rounded-xl text-xs active:scale-98 transition">
+                        LINK TO PARTNER
+                    </button>
+                    <p id="bond-status-text" class="text-[10px] font-mono text-center text-gray-600">Status: Copy your code or paste theirs to begin.</p>
+                </div>
+            </div>
+
+            <div id="screen-studio" class="app-screen flex-col items-center justify-between flex-1 pt-6 pb-6">
+                <div class="text-center font-mono">
+                    <h1 class="text-xs tracking-[0.4em] text-[#D4A359] font-light uppercase">Sensation Studio</h1>
+                    <p id="studio-instruction" class="text-[11px] text-gray-500 tracking-wider mt-1">Hold down your touch inside the pad to construct a pattern sequence.</p>
+                </div>
+
+                <div id="haptic-pad" onmousedown="startRecording(event)" onmouseup="stopRecording(event)" ontouchstart="startRecording(event)" ontouchend="stopRecording(event)" class="w-full h-52 bg-[#0D0D0E] border border-[#141416] rounded-2xl flex flex-col justify-center items-center cursor-pointer group active:border-[#D4A359]/20 transition-all shadow-inner relative overflow-hidden">
+                    <div id="pad-ripple-aura" class="absolute inset-0 bg-[#D4A359]/10 opacity-0 transition-opacity duration-150 pointer-events-none"></div>
+                    <div class="w-12 h-12 rounded-full border border-gray-800 group-hover:border-[#D4A359]/20 flex items-center justify-center transition-colors pointer-events-none">
+                        <div class="w-2 h-2 rounded-full bg-gray-700 group-hover:bg-[#D4A359] transition-colors"></div>
+                    </div>
+                    <span class="text-[10px] font-mono tracking-widest text-gray-600 mt-4 pointer-events-none">TOUCH CANVAS</span>
+                </div>
+
+                <div class="flex gap-2 w-full">
+                    <button onclick="clearSequence()" class="flex-1 py-2.5 bg-[#121214] border border-[#1c1c1f] rounded-xl text-[11px] font-mono tracking-widest text-gray-500 hover:text-gray-300 transition">ERASE</button>
+                    <button onclick="transmitSequence()" class="flex-1 py-2.5 bg-[#D4A359]/10 border border-[#D4A359]/20 rounded-xl text-[11px] font-mono tracking-widest text-[#D4A359] hover:bg-[#D4A359]/20 transition">BEAM RHYTHM</button>
+                </div>
+                <div class="h-2"></div>
+            </div>
+
+            <div id="app-navigation-dock" class="w-full bg-[#0D0D0E]/80 backdrop-blur-md rounded-2xl p-2.5 flex justify-around items-center border border-white/5 relative z-50">
+                <button onclick="switchAppTab('cockpit')" id="nav-cockpit" class="flex-1 py-2 flex flex-col items-center gap-1 text-[#D4A359] transition bg-transparent border-0 outline-none cursor-pointer">
+                    <span class="text-[10px] tracking-widest font-mono font-medium">HEARTH</span>
+                    <div class="w-1 h-1 rounded-full bg-[#D4A359]"></div>
+                </button>
+                <button onclick="switchAppTab('handshake')" id="nav-handshake" class="flex-1 py-2 flex flex-col items-center gap-1 text-gray-600 transition bg-transparent border-0 outline-none cursor-pointer">
+                    <span class="text-[10px] tracking-widest font-mono">BOND</span>
+                    <div class="w-1 h-1 rounded-full bg-transparent"></div>
+                </button>
+                <button onclick="switchAppTab('studio')" id="nav-studio" class="flex-1 py-2 flex flex-col items-center gap-1 text-gray-600 transition bg-transparent border-0 outline-none cursor-pointer">
+                    <span class="text-[10px] tracking-widest font-mono">STUDIO</span>
+                    <div class="w-1 h-1 rounded-full bg-transparent"></div>
+                </button>
+            </div>
+        </div>
+
+        <div class="w-full flex justify-center items-center h-4 relative z-50 mt-auto pt-2">
+            <div onclick="returnToHomeScreen()" class="w-32 h-1 bg-gray-700 hover:bg-gray-500 rounded-full cursor-pointer transition-colors"></div>
+        </div>
+    </div>
+
+    <div class="mt-6 max-w-sm text-center space-y-2 font-mono">
+        <p class="text-xs text-gray-400">
+            <strong>Testing Across Mobile Phones:</strong>
+        </p>
+        <ul class="text-[11px] text-gray-500 text-left list-decimal space-y-1 px-4">
+            <li>Open this Pen on <strong>Phone A</strong> and <strong>Phone B</strong>.</li>
+            <li>Go to the <strong>BOND</strong> tab on Phone A, tap the device code to copy it, and send it to Phone B.</li>
+            <li>On Phone B, paste that code into the input field and hit <strong>LINK TO PARTNER</strong>.</li>
+        </ul>
+    </div>
+
+    <script>
+        const homeScreen = document.getElementById('layer-home-screen');
+        const appShell = document.getElementById('layer-application-shell');
+        
+        function bootAppFromWidget() {
+            homeScreen.classList.remove('scale-100', 'opacity-100');
+            homeScreen.classList.add('scale-105', 'opacity-0');
+            setTimeout(() => {
+                homeScreen.classList.add('pointer-events-none');
+                appShell.classList.remove('pointer-events-none', 'opacity-0', 'scale-95');
+                appShell.classList.add('opacity-100', 'scale-100', 'z-40');
+            }, 150);
+        }
+
+        function returnToHomeScreen() {
+            appShell.classList.remove('opacity-100', 'scale-100', 'z-40');
+            appShell.classList.add('pointer-events-none', 'opacity-0', 'scale-95');
+            setTimeout(() => {
+                homeScreen.classList.remove('pointer-events-none', 'scale-105', 'opacity-0');
+                homeScreen.classList.add('scale-100', 'opacity-100');
+            }, 150);
+        }
+
+        function switchAppTab(screenId) {
+            document.querySelectorAll('.app-screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(`screen-${screenId}`).classList.add('active');
+            document.querySelectorAll('[id^="nav-"]').forEach(btn => {
+                btn.classList.remove('text-[#D4A359]', 'text-gray-600');
+                btn.classList.add('text-gray-600');
+                if (btn.querySelector('div')) btn.querySelector('div').style.backgroundColor = 'transparent';
+            });
+            const activeNav = document.getElementById(`nav-${screenId}`);
+            if (activeNav) {
+                activeNav.classList.remove('text-gray-600');
+                activeNav.classList.add('text-[#D4A359]');
+                if (activeNav.querySelector('div')) activeNav.querySelector('div').style.backgroundColor = '#D4A359';
+            }
+        }
+
+        // Defensive WebRTC Peer Architecture Setup
+        let localPeer = null;
+        let peerDataConnection = null;
+        const connectionIndicator = document.getElementById('connection-indicator');
+        const myPeerIdDisplay = document.getElementById('my-peer-id');
+
+        function initializePeerEngine() {
+            localPeer = new Peer(null, { debug: 1 });
+
+            localPeer.on('open', function(id) {
+                myPeerIdDisplay.innerText = id;
+                connectionIndicator.innerText = "● CHANNELS OPEN";
+                connectionIndicator.className = "text-amber-500 font-bold text-[10px]";
+            });
+
+            // Triggered when a remote connection targets this device ID
+            localPeer.on('connection', function(conn) {
+                peerDataConnection = conn;
+                configureConnectionListeners();
+            });
+
+            localPeer.on('error', function(err) {
+                console.error("Peer Engine Error: ", err);
+                document.getElementById('bond-status-text').innerText = "Connection lost. Retry handshake.";
+                document.getElementById('bond-status-text').className = "text-[10px] font-mono text-center text-red-400";
+            });
+        }
+
+        function establishBond() {
+            const targetPeerId = document.getElementById('bond-input').value.trim();
+            if(!targetPeerId) return alert("Please paste your partner's code.");
+            
+            document.getElementById('bond-status-text').innerText = "Connecting to frequency cloud...";
+            document.getElementById('bond-status-text').className = "text-[10px] font-mono text-center text-amber-400";
+
+            // Establish secure pipeline link parameters
+            peerDataConnection = localPeer.connect(targetPeerId, { reliable: true });
+            configureConnectionListeners();
+        }
+
+        function configureConnectionListeners() {
+            // Guard clause checking if the initialization completed successfully
+            if (!peerDataConnection) return;
+
+            peerDataConnection.on('open', function() {
+                connectionIndicator.innerText = "● BOUND TO PHONE";
+                connectionIndicator.className = "text-emerald-500 font-bold text-[10px]";
+                
+                document.getElementById('bond-status-text').innerText = "Device Linked Successfully.";
+                document.getElementById('bond-status-text').className = "text-[10px] font-mono text-center text-emerald-400";
+                document.getElementById('cockpit-status-text').innerText = "Linked Presence Live";
+                document.getElementById('hearth-instruction').innerText = "TAP THE WAVE TO SEND PULSE";
+                document.getElementById('widget-status').innerText = "Synchronized";
+                document.getElementById('widget-headline').innerText = "Connected";
+                document.getElementById('widget-subline').innerText = "Channel streaming smoothly";
+
+                if (navigator.vibrate) navigator.vibrate([40, 30, 40]);
+                switchAppTab('cockpit');
+            });
+
+            peerDataConnection.on('data', function(data) {
+                handleIncomingTelemetry(data);
+            });
+
+            peerDataConnection.on('close', function() {
+                connectionIndicator.innerText = "● DISCONNECTED";
+                connectionIndicator.className = "text-red-500 font-bold text-[10px]";
+                document.getElementById('bond-status-text').innerText = "Partner disconnected.";
+                document.getElementById('bond-status-text').className = "text-[10px] font-mono text-center text-red-400";
+            });
+        }
+
+        function transmitPayload(payload) {
+            if (peerDataConnection && peerDataConnection.open) {
+                peerDataConnection.send(payload);
+            }
+        }
+
+        function handleIncomingTelemetry(packet) {
+            if (packet.type === "pulse") {
+                executeVisualHearthPulse();
+            } else if (packet.type === "pattern") {
+                executeSequencePlayback(packet.sequence);
+            }
+        }
+
+        function sendHeartbeat() {
+            if (!peerDataConnection || !peerDataConnection.open) {
+                switchAppTab('handshake');
+                alert("Please connect your phone to another device via the BOND tab first!");
+                return;
+            }
+            executeVisualHearthPulse();
+            transmitPayload({ type: "pulse" });
+        }
+
+        function executeVisualHearthPulse() {
+            const wave = document.getElementById('cockpit-wave');
+            const hearthAura = document.getElementById('hearth-aura');
+            
+            wave.setAttribute('d', 'M0 40 L140 40 L170 40 L190 12 L210 68 L230 40 L260 40 L400 40');
+            hearthAura.style.transform = 'translate(-50%, -50%) scale(1.25)';
+            hearthAura.style.backgroundColor = '#ffffff';
+
+            if (navigator.vibrate) navigator.vibrate(60);
+
+            setTimeout(() => {
+                wave.setAttribute('d', 'M0 40 C50 36 75 44 100 40 C125 36 150 44 175 40 C200 36 225 44 250 40 C275 36 325 44 400 40');
+                hearthAura.style.transform = 'translate(-50%, -50%) scale(1)';
+                hearthAura.style.backgroundColor = '#D4A359';
+            }, 400);
+        }
+
+        // Sensation Studio Logic
+        let recordedSequence = [];
+        let timingAnchor = 0;
+        let gapAnchor = 0;
+        const padAura = document.getElementById('pad-ripple-aura');
+        const studioInstruction = document.getElementById('studio-instruction');
+
+        function startRecording(e) {
+            e.preventDefault();
+            padAura.style.opacity = '1';
+            const rightNow = Date.now();
+            
+            if (recordedSequence.length > 0 && gapAnchor > 0) {
+                recordedSequence.push(rightNow - gapAnchor); 
+            }
+            timingAnchor = rightNow;
+            if (navigator.vibrate) navigator.vibrate(20);
+        }
+
+        function stopRecording(e) {
+            e.preventDefault();
+            padAura.style.opacity = '0';
+            const pressDuration = Date.now() - timingAnchor;
+            
+            if (pressDuration > 20) {
+                recordedSequence.push(pressDuration);
+                gapAnchor = Date.now();
+                studioInstruction.innerText = `Arranged Sensation: ${recordedSequence.filter((_, i) => i % 2 === 0).length} Taps saved`;
+                studioInstruction.style.color = '#D4A359';
+            }
+        }
+
+        function clearSequence() {
+            recordedSequence = [];
+            studioInstruction.innerText = "Canvas wiped clean. Begin when ready.";
+            studioInstruction.style.color = '';
+        }
+
+        function transmitSequence() {
+            if (recordedSequence.length === 0) return alert("Construct a rhythm sequence first.");
+            if (!peerDataConnection || !peerDataConnection.open) return alert("Devices must be bonded to beam data.");
+            
+            transmitPayload({ type: "pattern", sequence: recordedSequence });
+            studioInstruction.innerText = "Rhythm pattern beamed across space!";
+            setTimeout(() => { studioInstruction.style.color = ''; studioInstruction.innerText = "Hold down your touch inside the pad to construct a pattern sequence."; }, 2000);
+            clearSequence();
+        }
+
+        function executeSequencePlayback(sequence) {
+            if (!sequence || sequence.length === 0) return;
+            
+            studioInstruction.innerText = "Receiving foreign rhythm arrangement...";
+            studioInstruction.style.color = '#ffffff';
+
+            if (navigator.vibrate) navigator.vibrate(sequence);
+
+            let index = 0;
+            function runVisualFlashLoop() {
+                if (index >= sequence.length) {
+                    padAura.style.opacity = '0';
+                    studioInstruction.innerText = "Pattern arrangement fully absorbed.";
+                    studioInstruction.style.color = '#D4A359';
+                    return;
+                }
+                const duration = sequence[index];
+                if (index % 2 === 0) {
+                    padAura.style.opacity = '1'; 
+                    setTimeout(() => { index++; runVisualFlashLoop(); }, duration);
+                } else {
+                    padAura.style.opacity = '0'; 
+                    setTimeout(() => { index++; runVisualFlashLoop(); }, duration);
+                }
+            }
+            runVisualFlashLoop();
+        }
+
+        setInterval(() => {
+            const d = new Date();
+            document.getElementById('system-time').innerText = d.getHours().toString().padStart(2, '0') + ":" + d.getMinutes().toString().padStart(2, '0');
+        }, 1000);
+
+        // Click handler to manually focus selection text inside code box
+        myPeerIdDisplay.addEventListener('click', () => {
+            const selection = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(myPeerIdDisplay);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        });
+
+        window.addEventListener('DOMContentLoaded', initializePeerEngine);
+    </script>
+</body>
+</html>
